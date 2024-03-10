@@ -1,0 +1,104 @@
+{
+	"info": {
+		"_postman_id": "2f2ba6a6-8fd2-4dee-b3ca-70fe24fc5a76",
+		"name": "ConvertCurrency",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32350108"
+	},
+	"item": [
+		{
+			"name": "get tickets",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/tickets",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"tickets"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "post convert",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n\t\"base_currency\": \"RUB\",\r\n\t\"convert_currency\": \"USD\",\r\n\t\"base_amount\": 50000.0\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/convert",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"convert"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "invalidate",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/invalidate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"invalidate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "set currency",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n\t\"base_currency\": \"RUB\",\r\n\t\"convert_currency\": \"USD\",\r\n\t\"base_amount\": 1.0,\r\n\t\"convert_amount\": 150.3\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/set",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"set"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
