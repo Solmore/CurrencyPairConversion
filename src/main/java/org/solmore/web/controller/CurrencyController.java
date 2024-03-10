@@ -25,35 +25,55 @@ public class CurrencyController {
 
     public void initRoutes(Javalin app) {
         app.get("/tickets", ctx -> {
-            logger.info("Get all currency");
-            ctx.status(200).json(Ticket.values());
+            try {
+                logger.info("Get all currency");
+                ctx.status(200).json(Ticket.values());
+            } catch (Exception e) {
+                logger.error("Error processing request: " + e.getMessage());
+                ctx.status(500).json("An error occurred while processing the request");
+            }
         });
 
         app.post("/convert", ctx -> {
-            logger.info("Get convert of currency");
-            CurrencyRequestPairDto dto = ctx.bodyAsClass(CurrencyRequestPairDto.class);
-            CurrencyPair pair = service.getPair(dto.getBase_currency(), dto.getConvert_currency(), dto.getBase_amount());
-            System.out.println(pair);
-            ctx.status(200).json(mapper.toDto(pair));
+            try {
+                logger.info("Get convert of currency");
+                CurrencyRequestPairDto dto = ctx.bodyAsClass(CurrencyRequestPairDto.class);
+                CurrencyPair pair = service.getPair(dto.getBase_currency(), dto.getConvert_currency(), dto.getBase_amount());
+                System.out.println(pair);
+                ctx.status(200).json(mapper.toDto(pair));
+            } catch (Exception e) {
+                logger.error("Error converting currency: " + e.getMessage());
+                ctx.status(500).json("An error occurred while converting currency");
+            }
         });
 
         app.get("/invalidate", ctx -> {
-            logger.info("Validated pair of currency");
-            service.validationPair();
-            ctx.status(200);
+            try {
+                logger.info("Validated pair of currency");
+                service.validationPair();
+                ctx.status(200);
+            } catch (Exception e) {
+                logger.error("Error validating currency pair: " + e.getMessage());
+                ctx.status(500).json("An error occurred while validating currency pair");
+            }
         });
 
         app.post("/set", ctx -> {
-            logger.info("Set currency pairs");
-            CurrencyPairDto dto = ctx.bodyAsClass(CurrencyPairDto.class);
-            CurrencyPair pair = mapper.toEntity(dto);
-            service.createPair(pair);
-            CurrencyPair reversePair = service.getPair(pair.getId().getConvertCurrency(),pair.getId().getBaseCurrency(),pair.getId().getBaseAmount());
-            var response = Map.of(
-                    "direct", mapper.toDto(pair),
-                    "reverse", mapper.toDto(reversePair)
-            );
-            ctx.status(200).json(response);
+            try {
+                logger.info("Set currency pairs");
+                CurrencyPairDto dto = ctx.bodyAsClass(CurrencyPairDto.class);
+                CurrencyPair pair = mapper.toEntity(dto);
+                service.createPair(pair);
+                CurrencyPair reversePair = service.getPair(pair.getId().getConvertCurrency(), pair.getId().getBaseCurrency(), pair.getId().getBaseAmount());
+                var response = Map.of(
+                        "direct", mapper.toDto(pair),
+                        "reverse", mapper.toDto(reversePair)
+                );
+                ctx.status(200).json(response);
+            } catch (Exception e) {
+                logger.error("Error setting currency pair: " + e.getMessage());
+                ctx.status(500).json("An error occurred while setting currency pair");
+            }
         });
     }
 }
