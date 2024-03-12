@@ -18,7 +18,7 @@ public class CurrencyPair implements Serializable {
     @EmbeddedId
     private CurrencyPairId id;
 
-    @Column(name = "convert_amount")
+    @Column(name = "convert_amount", columnDefinition = "NUMERIC(30,6)")
     private BigDecimal convertAmount;
 
 }

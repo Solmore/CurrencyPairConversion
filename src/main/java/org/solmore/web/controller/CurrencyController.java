@@ -39,7 +39,6 @@ public class CurrencyController {
                 logger.info("Get convert of currency");
                 CurrencyRequestPairDto dto = ctx.bodyAsClass(CurrencyRequestPairDto.class);
                 CurrencyPair pair = service.getPair(dto.getBase_currency(), dto.getConvert_currency(), dto.getBase_amount());
-                System.out.println(pair);
                 ctx.status(200).json(mapper.toDto(pair));
             } catch (Exception e) {
                 logger.error("Error converting currency: " + e.getMessage());

@@ -23,7 +23,7 @@ public class CurrencyPairId implements Serializable {
     @Enumerated(EnumType.STRING)
     private Ticket convertCurrency;
 
-    @Column(name = "base_amount")
+    @Column(name = "base_amount", columnDefinition = "NUMERIC(30,6)")
     private BigDecimal baseAmount;
 
     protected CurrencyPairId() {

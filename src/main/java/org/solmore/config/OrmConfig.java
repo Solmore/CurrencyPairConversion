@@ -57,7 +57,7 @@ public class OrmConfig {
         return factory;
     }
 
-    @Bean
+    @Bean("liquibase")
     public SpringLiquibase liquibase(DatabaseConfig databaseConfig) {
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setChangeLog(changeLog);

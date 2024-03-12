@@ -9,11 +9,13 @@ spring:
     driver-class-name: org.postgresql.Driver
   data:
     redis:
-      host: redis
-      port: 6379
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
   jpa:
     hibernate:
       ddl-auto: none
   liquibase:
     change-log: classpath:liquibase/db.changelog.yaml
     default-schema: ${POSTGRES_SCHEMA}
+security:
+  key: ${KEYS}

@@ -5,6 +5,7 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.solmore.domain.CurrencyPair;
@@ -13,7 +14,7 @@ import org.solmore.domain.Ticket;
 import org.solmore.domain.exception.CurrencyPairNotFoundException;
 import org.solmore.repository.CurrencyRepository;
 import org.solmore.web.dto.CurrencyAPIDto;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -30,8 +31,8 @@ public class CurrencyServiceImpl implements CurrencyService{
     private final CurrencyRepository repository;
 
 
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    @Value("${security.key}") String urlKey;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(CurrencyServiceImpl.class);
 
@@ -62,14 +63,15 @@ public class CurrencyServiceImpl implements CurrencyService{
                 .addPathSegment("")
                 .addQueryParameter("get", "rates")
                 .addQueryParameter("pairs", pairs)
-                .addQueryParameter("key", "a024d161c7b66df677a89a43427fcb70")
+                .addQueryParameter("key", urlKey)
                 .build();
         return new Request.Builder().url(httpUrl).build();
     }
 
     private void processResponse(OkHttpClient client, Request request) {
         try (Response response = client.newCall(request).execute()) {
-            CurrencyAPIDto dto = new Gson().fromJson(Objects.requireNonNull(response.body()).string(), CurrencyAPIDto.class);
+            CurrencyAPIDto dto = new Gson().fromJson(Objects.requireNonNull(response.body()).string(),
+                    CurrencyAPIDto.class);
             List<CurrencyPair> currencyPairs = dto.getData()
                     .keySet()
                     .stream()
@@ -81,7 +83,8 @@ public class CurrencyServiceImpl implements CurrencyService{
                                 BigDecimal.ONE
                         );
                         currencyPair.setId(currencyPairId);
-                        currencyPair.setConvertAmount(BigDecimal.valueOf(Float.parseFloat(dto.getData().get(key))));
+                        currencyPair.setConvertAmount(
+                                BigDecimal.valueOf(Float.parseFloat(dto.getData().get(key))));
                         return currencyPair;
                     })
                     .collect(Collectors.toList());
@@ -97,19 +100,27 @@ public class CurrencyServiceImpl implements CurrencyService{
     public void createPair(CurrencyPair pair) {
         logger.info("Save currency pair");
         saveOrUpdatePair(pair);
+        CurrencyPair reversePair = getCurrencyPair(pair);
+        saveOrUpdatePair(reversePair);
+        String key = pair.getId().getBaseCurrency().name() + pair.getId().getConvertCurrency().name()
+                + pair.getId().getBaseAmount().toPlainString();
+        redisTemplate.opsForValue().set(key, pair);
+        logger.info("Successful finish currency pair");
+    }
+
+    @NotNull
+    private CurrencyPair getCurrencyPair(CurrencyPair pair) {
         CurrencyPair reversePair = new CurrencyPair();
         CurrencyPairId currencyPairId = new CurrencyPairId(
                 pair.getId().getConvertCurrency(),
                 pair.getId().getBaseCurrency(),
                 pair.getId().getBaseAmount()
         );
-        currencyPairId.setConvertCurrency(pair.getId().getBaseCurrency());
         reversePair.setId(currencyPairId);
-        reversePair.setConvertAmount(pair.getId().getBaseAmount().divide(pair.getConvertAmount(), 15 ,RoundingMode.DOWN));
-        saveOrUpdatePair(reversePair);
-        String key = pair.getId().getBaseCurrency().name() + pair.getId().getConvertCurrency().name() + pair.getId().getBaseAmount().toPlainString();
-        redisTemplate.opsForValue().set(key, pair);
-        logger.info("Successful finish currency pair");
+        reversePair.setConvertAmount(
+                pair.getId().getBaseAmount().divide(pair.getConvertAmount(), 15 ,RoundingMode.DOWN)
+                        .multiply(reversePair.getId().getBaseAmount()));
+        return reversePair;
     }
 
     public CurrencyPair getPair(Ticket baseTicket, Ticket convertTicket, BigDecimal baseAmount) {
@@ -122,15 +133,21 @@ public class CurrencyServiceImpl implements CurrencyService{
             logger.info("Currency pair found in cache");
             return pair;
         }
-        pair = repository.findByBaseCurrencyAndConvertCurrencyAndBaseAmount(baseTicket.name(), convertTicket.name(), baseAmount);
+        pair = repository
+                .findByBaseCurrencyAndConvertCurrencyAndBaseAmount(baseTicket.name(),
+                                                                   convertTicket.name(),
+                                                                   baseAmount);
         if (pair == null) {
             logger.info("No direct pair found, trying with base amount of BigDecimal.ONE");
-            pair = repository.findByBaseCurrencyAndConvertCurrencyAndBaseAmount(baseTicket.name(), convertTicket.name(), BigDecimal.ONE);
+            pair = repository.findByBaseCurrencyAndConvertCurrencyAndBaseAmount(baseTicket.name(),
+                                                                                convertTicket.name(),
+                                                                                BigDecimal.ONE);
             if (pair == null) {
-                logger.error("Currency pair not found for " + baseTicket + " to " + convertTicket + " with base amount " + baseAmount);
-                throw new CurrencyPairNotFoundException("Currency pair not found for " + baseTicket + " to " + convertTicket + " with base amount " + baseAmount);
+                logger.error("Currency pair not found for " + baseTicket + " to "
+                        + convertTicket + " with base amount " + baseAmount);
+                throw new CurrencyPairNotFoundException("Currency pair not found for "
+                        + baseTicket + " to " + convertTicket + " with base amount " + baseAmount);
             }
-            // Adjust the pair according to the original baseAmount if a pair is found with BigDecimal.ONE
             CurrencyPair adjustedPair = adjustPairToOriginalBaseAmount(pair, baseAmount);
             createPair(adjustedPair);
             return adjustedPair;
@@ -142,7 +159,9 @@ public class CurrencyServiceImpl implements CurrencyService{
 
     private CurrencyPair adjustPairToOriginalBaseAmount(CurrencyPair pair, BigDecimal baseAmount) {
         CurrencyPair adjustedPair = new CurrencyPair();
-        CurrencyPairId id = new CurrencyPairId(pair.getId().getBaseCurrency(), pair.getId().getConvertCurrency(), baseAmount);
+        CurrencyPairId id = new CurrencyPairId(pair.getId().getBaseCurrency(), 
+                                               pair.getId().getConvertCurrency(),
+                                               baseAmount);
         adjustedPair.setId(id);
         adjustedPair.setConvertAmount(baseAmount.multiply(pair.getConvertAmount()));
         return adjustedPair;
@@ -164,7 +183,8 @@ public class CurrencyServiceImpl implements CurrencyService{
         } else {
             repository.saveAndFlush(pair);
         }
-        String key = pair.getId().getBaseCurrency().name() + pair.getId().getConvertCurrency().name() + pair.getId().getBaseAmount().toPlainString();
+        String key = pair.getId().getBaseCurrency().name() + pair.getId().getConvertCurrency().name()
+                + pair.getId().getBaseAmount().toPlainString();
         redisTemplate.opsForValue().set(key, pair);
     }
 }
